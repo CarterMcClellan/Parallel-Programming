@@ -1,5 +1,6 @@
 #include "CS149intrin.h"
 #include "logger.h"
+#include <stdio.h>
 
 //******************
 //* Implementation *
@@ -259,3 +260,17 @@ void addUserLog(const char * logStr) {
   CS149Logger.addLog(logStr, _cs149_init_ones(), 0);
 }
 
+void print_mask(__cs149_mask &mask) {
+  printf("[");
+  for (int i=0; i<VECTOR_WIDTH; i++) {
+    printf("%d,", mask.value[i]);
+  }
+  printf("]\n");
+}
+void print_vector(__cs149_vec<T> &vec) {
+  printf("[");
+  for (int i=0; i<VECTOR_WIDTH; i++) {
+    printf("%d,", vec.value[i]);
+  }
+  printf("]\n");
+}

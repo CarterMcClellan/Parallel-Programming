@@ -115,8 +115,10 @@ void initValue(float* values, int* exponents, float* output, float* gold, unsign
   for (unsigned int i=0; i<N+VECTOR_WIDTH; i++)
   {
     // random input values
-    values[i] = -1.f + 4.f * static_cast<float>(rand()) / RAND_MAX;
-    exponents[i] = rand() % EXP_MAX;
+    // values[i] = -1.f + 4.f * static_cast<float>(rand()) / RAND_MAX;
+    // exponents[i] = rand() % EXP_MAX;
+    values[i] = 2.f;
+    exponents[i] = 3.f;
     output[i] = 0.f;
     gold[i] = 0.f;
   }
@@ -241,32 +243,56 @@ void clampedExpSerial(float* values, int* exponents, float* output, int N) {
 }
 
 void clampedExpVector(float* values, int* exponents, float* output, int N) {
+  // (x, result) will hold a slice of values
+  __cs149_vec_float x;
+  __cs149_vec_float result;
 
-  //
-  // CS149 STUDENTS TODO: Implement your vectorized version of
-  // clampedExpSerial() here.
-  //
-  // Your solution should work for any value of
-  // N and VECTOR_WIDTH, not just when VECTOR_WIDTH divides N
-  //
-  
-  __cs149_vec_float one = _cs149_vset_float(0.f);
+  // (y) will  hold a slice of exponents
+  __cs149_vec_float y;
+
+  // constants to be used throughout our program
+  __cs149_vec_float zero = _cs149_vset_float(0.f);
+  __cs149_vec_float one = _cs149_vset_float(1.f);
+
+  // masks
+  __cs149_mask maskAll, maskExp;
   for (int i=0; i<N; i+=VECTOR_WIDTH) {
-
+    printf("%d iteration \n", i);
     // All ones
     maskAll = _cs149_init_ones();
 
-    // result *= x
-    _cs149_vmult_float(x, values+i, maskAll);
+    // Load exponents, and values
+    _cs149_vload_float(x, values+i, maskAll);               // x = values[i];
+    _cs149_vload_float(y, values+i, maskAll);               // y = exponents[i];
+    
+    // initialize a vector of ones
+    maskExp = _cs149_init_ones();
 
-    // count--
-    _cs149_vsub_float(
+    // if exponents[i] < 0 -> maskExp = 0
+    // else maskExp remains 1
+    _cs149_vlt_float(maskExp, y, zero, maskAll);
 
-    // if count < 0
-    _cs149_vlt_float(maskIsNegative, x, zero, maskAll);     
+    // while at least one item needs to be exponentiated
+    while(_cs149_cntbits(maskExp)) {
+	    // Multiply those values by themselves 
+	    _cs149_vmult_float(result, result, x, maskAll);                   // result = result * x
+	    printf("result vector\n");
+            print_vector(result);
+	    
+	    // exponents[i] -= 1
+            _cs149_vsub_float(y, y, one, maskAll);
+	    printf("y vector\n");
+            print_vector(y);
 
-    // Write results back to memory
-    _cs149_vstore_float(output+i, result, maskAll);
+	    // if exponents[i] < 0 -> maskExp = 0
+	    // else maskExp remains 1
+	    _cs149_vlt_float(maskExp, y, zero, maskAll);
+	    printf("maskAll mask\n");
+            print_vector(maskAll);
+    }
+
+    // Update the output value
+    _cs149_vstore_float(output+i, x, maskAll);
   }
 }
 

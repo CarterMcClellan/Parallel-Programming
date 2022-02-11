@@ -124,4 +124,7 @@ void _cs149_interleave_float(__cs149_vec_float &vecResult, __cs149_vec_float &ve
 // Add a customized log to help debugging
 void addUserLog(const char * logStr);
 
+void print_mask(__cs149_mask &mask);
+void print_vector(__cs149_vec &vec);
+
 #endif
