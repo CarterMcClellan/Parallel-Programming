@@ -1,13 +1,9 @@
 #include <stdio.h>
 
-/*
- * Host function to initialize vector elements. This function
- * simply initializes each element to equal its index in the
- * vector.
- */
 __global__
 void initWith(float num, float *a, int N)
 {
+
   int index = threadIdx.x + blockIdx.x * blockDim.x;
   int stride = blockDim.x * gridDim.x;
 
@@ -16,11 +12,6 @@ void initWith(float num, float *a, int N)
     a[i] = num;
   }
 }
-
-/*
- * Device kernel stores into `result` the sum of each
- * same-indexed value of `a` and `b`.
- */
 
 __global__
 void addVectorsInto(float *result, float *a, float *b, int N)
@@ -33,11 +24,6 @@ void addVectorsInto(float *result, float *a, float *b, int N)
     result[i] = a[i] + b[i];
   }
 }
-
-/*
- * Host function to confirm values in `vector`. This function
- * assumes all values are the same `target` value.
- */
 
 void checkElementsAre(float target, float *vector, int N)
 {
@@ -54,16 +40,12 @@ void checkElementsAre(float target, float *vector, int N)
 
 int main()
 {
-
-  /* get device properties */
   int deviceId;
   int numberOfSMs;
 
   cudaGetDevice(&deviceId);
   cudaDeviceGetAttribute(&numberOfSMs, cudaDevAttrMultiProcessorCount, deviceId);
-  
-  printf("Device ID: %d\tNumber of SMs: %d\n", deviceId, numberOfSMs);
-   
+
   const int N = 2<<24;
   size_t size = N * sizeof(float);
 
@@ -74,25 +56,36 @@ int main()
   cudaMallocManaged(&a, size);
   cudaMallocManaged(&b, size);
   cudaMallocManaged(&c, size);
-  
-  // add gpu pre-fetching logic here
-  cudaMemPrefetchAsync(a, size, deviceId);        // Prefetch to GPU device.
-  cudaMemPrefetchAsync(b, size, deviceId);        // Prefetch to GPU device.
-  cudaMemPrefetchAsync(c, size, deviceId);        // Prefetch to GPU device.
-  //
-  
-  size_t threadsPerBlock = 256;
-  size_t numberOfBlocks = 32 * numberOfSMs;
-  
-  printf("numberOfBlocks: %lu\nthreadsPerBlock: %lu\n", numberOfBlocks, threadsPerBlock);
 
-  initWith<<<numberOfBlocks, threadsPerBlock>>>(3, a, N);
-  initWith<<<numberOfBlocks, threadsPerBlock>>>(4, b, N);
-  initWith<<<numberOfBlocks, threadsPerBlock>>>(0, c, N);
-  
-  cudaDeviceSynchronize();
+  cudaMemPrefetchAsync(a, size, deviceId);
+  cudaMemPrefetchAsync(b, size, deviceId);
+  cudaMemPrefetchAsync(c, size, deviceId);
+
+  size_t threadsPerBlock;
+  size_t numberOfBlocks;
+
+  threadsPerBlock = 256;
+  numberOfBlocks = 32 * numberOfSMs;
+
   cudaError_t addVectorsErr;
   cudaError_t asyncErr;
+
+  /*
+   * Create 3 streams to run initialize the 3 data vectors in parallel.
+   */
+
+  cudaStream_t stream1, stream2, stream3;
+  cudaStreamCreate(&stream1);
+  cudaStreamCreate(&stream2);
+  cudaStreamCreate(&stream3);
+
+  /*
+   * Give each `initWith` launch its own non-standard stream.
+   */
+
+  initWith<<<numberOfBlocks, threadsPerBlock, 0, stream1>>>(3, a, N);
+  initWith<<<numberOfBlocks, threadsPerBlock, 0, stream2>>>(4, b, N);
+  initWith<<<numberOfBlocks, threadsPerBlock, 0, stream3>>>(0, c, N);
 
   addVectorsInto<<<numberOfBlocks, threadsPerBlock>>>(c, a, b, N);
 
@@ -102,9 +95,17 @@ int main()
   asyncErr = cudaDeviceSynchronize();
   if(asyncErr != cudaSuccess) printf("Error: %s\n", cudaGetErrorString(asyncErr));
 
-  // prefetch for CPU memory
-  cudaMemPrefetchAsync(c, size, cudaCpuDeviceId); 
+  cudaMemPrefetchAsync(c, size, cudaCpuDeviceId);
+
   checkElementsAre(7, c, N);
+
+  /*
+   * Destroy streams when they are no longer needed.
+   */
+
+  cudaStreamDestroy(stream1);
+  cudaStreamDestroy(stream2);
+  cudaStreamDestroy(stream3);
 
   cudaFree(a);
   cudaFree(b);
