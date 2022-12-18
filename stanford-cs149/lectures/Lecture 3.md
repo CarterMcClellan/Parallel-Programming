@@ -207,7 +207,7 @@ thread 2 writes (x = 2)
 ### Shared Address Space Computer Architecture
 Any core must be able to access any address in memory thus we get these ring like sturctures which connect to each core, and then a separate bus which connects to RAM.
 
-**NUMA** (Non-Uniform Memory Access) is a paradigm which stems from this architecture. Not bandwidth and latency will not be the same across all cores. Some cores will be closer to a certain cache and thus will take less time.
+**NUMA** (Non-Uniform Memory Access) is a paradigm which stems from this architecture. Bandwidth and latency will not be the same across all cores. Some cores will be closer to a certain cache and thus will take less time.
 
 ## Message Passing Model
 Simple idea. Rather than sharing an address space, a message passing model gives each thread its own private address space. Then if 1 thread needs to communicate its result to another thread, a message passing interface is used.
