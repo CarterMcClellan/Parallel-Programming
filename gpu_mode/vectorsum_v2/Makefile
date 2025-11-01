@@ -1,4 +1,4 @@
-.PHONY: profile test clean
+.PHONY: profile test clean autotune help
 
 profile:
 	@echo "Running profiler..."
@@ -11,6 +11,17 @@ test:
 	@echo "Running tests..."
 	@POPCORN_FD=1 python eval.py test test_cases.txt
 
+autotune:
+	@echo "Auto-tuning BLOCK_SIZE..."
+	@python autotune.py
+
 clean:
 	@rm -f profile_output.txt
 	@echo "Cleaned up profile output"
+
+help:
+	@echo "Available targets:"
+	@echo "  make test     - Run correctness tests"
+	@echo "  make profile  - Profile kernel performance"
+	@echo "  make autotune - Test all BLOCK_SIZE values and show performance breakdown"
+	@echo "  make clean    - Clean up output files"
