@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 """
-Auto-tune benchmark: Test all BLOCK_SIZE values and show performance breakdown
+Auto-tune two_stage_reduction candidate: Test all BLOCK_SIZE values and show performance breakdown
 """
+
+import sys
+from pathlib import Path
+
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 import torch
 import triton
 import triton.language as tl
 from reference import generate_input
 from utils import clear_l2_cache
+from task import input_t, output_t
+from utils import DeterministicContext
 
 
 @triton.jit
@@ -91,19 +100,19 @@ def benchmark(block_size, test_sizes, num_runs=50, warmup=5):
 
 def main():
     print("=" * 80)
-    print("AUTO-TUNING: BLOCK_SIZE Performance Breakdown")
+    print("AUTO-TUNING: two_stage_reduction - BLOCK_SIZE Performance Breakdown")
     print("=" * 80)
 
     test_sizes = [
-        1024,      
-        4096,      
-        16384,     
-        65536,     
-        262144,    
-        1048576,   
-        2097152,   
-        4194304,   
-        8388608    
+        1024,
+        4096,
+        16384,
+        65536,
+        262144,
+        1048576,
+        2097152,
+        4194304,
+        8388608
     ]
     block_sizes = [64, 128, 256, 512, 1024, 2048]
 
@@ -137,13 +146,16 @@ def main():
 
     for result in sorted(all_results, key=lambda x: x['avg_mean']):
         speedup = best['avg_mean'] / result['avg_mean']
-        marker = " ← BEST" if result['block_size'] == best['block_size'] else ""
+        marker = " <- BEST" if result['block_size'] == best['block_size'] else ""
         print(f"{result['block_size']:<12} {result['avg_mean']:<12.4f} {speedup:<10.2f}x{marker}")
 
     print()
     print("=" * 80)
     print(f"Optimal BLOCK_SIZE: {best['block_size']} ({best['avg_mean']:.4f}ms)")
     print("=" * 80)
+    print()
+    print(f"To apply this configuration, update BLOCK_SIZE in solution.py:")
+    print(f"  BLOCK_SIZE = {best['block_size']}")
 
 
 if __name__ == "__main__":
